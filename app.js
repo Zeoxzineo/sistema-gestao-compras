@@ -1,4 +1,7 @@
 const API_URL = '/api/purchases';
+const SUPABASE_URL = 'https://toetkmsndyqeoaqjpqrf.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvZXRrbXNuZHlxZW9hcWpwcXJmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NTM4NzUsImV4cCI6MjEwNzIyOTg3NX0.1c2qwoTXrh8l1gFnNKPRy9fpX5acFb_XCSaqHYWS8sc';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let compras = [];
 let compraEmEdicao = null;
@@ -24,7 +27,7 @@ function normalizeCompra(item) {
 
   return {
     ...item,
-    id: item.id ?? item._id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    id: String(item.id ?? item._id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`),
     fornecedor: item.fornecedor || item.fornecedorNome || 'Fornecedor',
     nota: item.nota || item.notaFiscal || item.nf || '',
     dataCompra: item.dataCompra || item.data_compra || item.data || new Date().toISOString().slice(0, 10),
@@ -39,14 +42,17 @@ function normalizeCompra(item) {
 async function carregarCompras() {
   const status = document.getElementById('statusMessage');
   try {
-    const resposta = await fetch(API_URL, { cache: 'no-store' });
-    if (!resposta.ok) throw new Error('Erro ao carregar dados');
+    const { data, error } = await supabase
+      .from('compras')
+      .select('*')
+      .order('data_compra', { ascending: false });
 
-    const dados = await resposta.json();
-    compras = Array.isArray(dados) ? dados.map(normalizeCompra) : [];
+    if (error) throw error;
+
+    compras = Array.isArray(data) ? data.map(normalizeCompra) : [];
 
     if (status) {
-      status.textContent = 'Dados sincronizados com o servidor';
+      status.textContent = 'Dados sincronizados com o Supabase';
       status.className = 'text-xs text-emerald-600';
     }
 
@@ -67,17 +73,23 @@ async function carregarCompras() {
 
 async function salvarCompras() {
   try {
-    const resposta = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ purchases: compras })
-    });
+    const rows = compras.map((item) => ({
+      id: String(item.id),
+      fornecedor: item.fornecedor || 'Fornecedor',
+      nota: item.nota || '',
+      data_compra: item.dataCompra || new Date().toISOString().slice(0, 10),
+      forma_pagamento: item.formaPagamento || 'À vista',
+      valor_total: Number(item.valorTotal || 0),
+      valor_pago: Number(item.valorPago || 0),
+      valor_pendente: Number(item.valorPendente || 0),
+      status: item.status || 'Pendente'
+    }));
 
-    if (!resposta.ok) {
-      const payload = await resposta.json().catch(() => ({}));
-      throw new Error(payload.error || 'Erro ao salvar dados');
-    }
+    const { error } = await supabase
+      .from('compras')
+      .upsert(rows, { onConflict: 'id' });
 
+    if (error) throw error;
     return true;
   } catch (error) {
     console.error('Erro ao salvar compras:', error);

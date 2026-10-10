@@ -146,7 +146,9 @@
                             <th class="py-3.5 px-4 text-right">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="purchases-table-body" class="divide-y divide-slate-200 text-sm"></tbody>
+                    <tbody id="purchases-table-body" class="divide-y divide-slate-200 text-sm">
+                        <!-- Dynamic rows injected here -->
+                    </tbody>
                 </table>
             </div>
 
@@ -299,6 +301,8 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
